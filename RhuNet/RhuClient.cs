@@ -16,6 +16,8 @@ namespace RhuNet
         private TcpClient TCPClient = new TcpClient();
         private UdpClient UDPClient = new UdpClient();
 
+        public string Token =>  LocalClientInfo.ID.ToString();
+
         public ClientInfo LocalClientInfo = new ClientInfo();
         private List<ClientInfo> Clients = new List<ClientInfo>();
         private List<Ack> AckResponces = new List<Ack>();
@@ -30,6 +32,7 @@ namespace RhuNet
         public event EventHandler OnServerConnect;
         public event EventHandler<IPEndPoint> OnClientConnection;
         public event EventHandler<MessageReceivedEventArgs> OnMessageReceived;
+        public event Action<Data, IPEndPoint> dataRecived; 
 
         private bool _TCPListen = false;
         public bool TCPListen
@@ -55,7 +58,7 @@ namespace RhuNet
             }
         }
         public IPEndPoint ServerEndpoint;
-        public RhuClient(string ip,int port)
+        public RhuClient(string ip,int port ,string UUID)
         {
             ServerEndpoint = new IPEndPoint(IPAddress.Parse(ip), port);
             if(Environment.OSVersion.Platform == PlatformID.Win32NT)
@@ -66,7 +69,7 @@ namespace RhuNet
 
             UDPClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
-            LocalClientInfo.Name = System.Environment.MachineName;
+            LocalClientInfo.Name = UUID + "_"+ Guid.NewGuid().ToString();
             LocalClientInfo.ConnectionType = ConnectionTypes.Unknown;
             LocalClientInfo.ID = DateTime.Now.Ticks;
 
@@ -75,7 +78,6 @@ namespace RhuNet
             foreach (var IP in IPs)
                 LocalClientInfo.InternalAddresses.Add(IP);
 
-            ConnectOrDisconnect();
         }
 
         public void ConnectOrDisconnect()
@@ -203,7 +205,7 @@ namespace RhuNet
                     catch (Exception e)
                     {
                         if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Error on UDP Receive: " + e.Message);
+                            OnResultsUpdate.Invoke(this, "Error the UDP Receive: " + e.Message);
                     }
                 }
             }));
@@ -252,7 +254,11 @@ namespace RhuNet
 
         private void ProcessItem(IP2PBase Item, IPEndPoint EP = null)
         {
-            if (Item.GetType() == typeof(Message))
+            if(Item.GetType() == typeof(Data))
+            {
+                dataRecived?.Invoke((Data)Item,EP);
+            }
+            else if (Item.GetType() == typeof(Message))
             {
                 Message m = (Message)Item;
                 ClientInfo CI = Clients.FirstOrDefault(x => x.ID == Item.ID);
@@ -264,25 +270,6 @@ namespace RhuNet
                 if (m.ID != 0 & EP != null & CI != null)
                     if (OnMessageReceived != null)
                         OnMessageReceived.Invoke(EP, new MessageReceivedEventArgs(CI, m, EP));
-            }
-            else if (Item.GetType() == typeof(ClientInfo))
-            {
-                ClientInfo CI = Clients.FirstOrDefault(x => x.ID == Item.ID);
-
-                if (CI == null)
-                {
-                    Clients.Add((ClientInfo)Item);
-
-                    if (OnClientAdded != null)
-                        OnClientAdded.Invoke(this, (ClientInfo)Item);
-                }
-                else
-                {
-                    CI.Update((ClientInfo)Item);
-
-                    if (OnClientUpdated != null)
-                        OnClientUpdated.Invoke(this, (ClientInfo)Item);
-                }
             }
             else if (Item.GetType() == typeof(Notification))
             {
@@ -370,7 +357,26 @@ namespace RhuNet
                     A.RecipientID = LocalClientInfo.ID;
                     SendMessageUDP(A, EP);
                 }
+            }else if(Item.GetType() == typeof(ClientInfo))
+            {
+                Console.WriteLine("resived Client");
+                Clients.Add((ClientInfo)Item);
+                OnClientAdded?.Invoke(EP, (ClientInfo)Item);
+                if (tokens.Contains(((ClientInfo)Item).ID))
+                {
+                    tokens.Remove(((ClientInfo)Item).ID);
+                    ConnectToClient((ClientInfo)Item);
+                }
+
             }
+        }
+
+        public List<long> tokens = new List<long>();
+
+        public void ConnectToToken(string token)
+        {
+            tokens.Add(long.Parse(token));
+            SendMessageTCP(new getClient(long.Parse(token)));
         }
 
         public void ConnectToClient(ClientInfo CI)

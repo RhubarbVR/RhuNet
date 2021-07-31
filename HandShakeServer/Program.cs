@@ -42,6 +42,18 @@ namespace HandShakeServer
             }
         }
 
+        static ClientInfo FindClient(long ID)
+        {
+            foreach (var item in Clients)
+            {
+                if(item.ID == ID)
+                {
+                    return item;
+                }
+            }
+            return null;
+        }
+
         static void TCPListen()
         {
             TCP.Start();
@@ -165,9 +177,6 @@ namespace HandShakeServer
 
                 if (Client != null)
                     CI.Client = Client;
-
-                BroadcastTCP(CI);
-
                 if (!CI.Initialized)
                 {
                     if (CI.ExternalEndpoint != null & Protocol == ProtocolType.Udp)
@@ -197,6 +206,18 @@ namespace HandShakeServer
 
                 if (CI != null)
                     SendTCP(R, CI.Client);
+            }
+            else if(Item.GetType() == typeof(getClient))
+            {
+                Console.WriteLine("get client");
+                var e =FindClient(((getClient)Item).ClientID);
+                if(e != null)
+                {
+                    ClientInfo CI = Clients.FirstOrDefault(x => x.Client == Client);
+                    Console.WriteLine("found client");
+                    SendTCP(CI, e.Client);
+                    SendTCP(e, Client);
+                }
             }
         }
 

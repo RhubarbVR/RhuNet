@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RhuNet", "RhuNet\RhuNet.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RhuNetShared", "RhuNetShared\RhuNetShared.csproj", "{39AEB4E7-B8AB-49E0-A6E0-418458CB9E46}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HandShakeServer", "HandShakeServer\HandShakeServer.csproj", "{BA7AD4E4-92FE-4088-AE8B-6EA5FBEC27DF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HandShakeServer", "HandShakeServer\HandShakeServer.csproj", "{BA7AD4E4-92FE-4088-AE8B-6EA5FBEC27DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
