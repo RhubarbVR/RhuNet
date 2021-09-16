@@ -11,19 +11,25 @@ namespace RhuNet
 {
     public class RhuClient
     {
-        private IPAddress InternetAccessAdapter;
+        private IPAddress _internetAccessAdapter;
 
-        private TcpClient TCPClient = new TcpClient();
-        private UdpClient UDPClient = new UdpClient();
+        private TcpClient _tCPClient = new TcpClient();
+        private readonly UdpClient _uDPClient = new UdpClient();
 
-        public string Token =>  LocalClientInfo.ID.ToString();
+        public string Token
+        {
+            get
+            {
+                return LocalClientInfo.ID.ToString();
+            }
+        }
 
         public ClientInfo LocalClientInfo = new ClientInfo();
-        private List<ClientInfo> Clients = new List<ClientInfo>();
-        private List<Ack> AckResponces = new List<Ack>();
+        private readonly List<ClientInfo> _clients = new List<ClientInfo>();
+        private readonly List<Ack> _ackResponces = new List<Ack>();
 
-        private Thread ThreadTCPListen;
-        private Thread ThreadUDPListen;
+        private Thread _threadTCPListen;
+        private Thread _threadUDPListen;
 
         public event EventHandler<string> OnResultsUpdate;
         public event EventHandler<ClientInfo> OnClientAdded;
@@ -32,42 +38,44 @@ namespace RhuNet
         public event EventHandler OnServerConnect;
         public event EventHandler<IPEndPoint> OnClientConnection;
         public event EventHandler<MessageReceivedEventArgs> OnMessageReceived;
-        public event Action<Data, IPEndPoint> dataRecived; 
+        public event Action<Data, IPEndPoint> DataRecived; 
 
-        private bool _TCPListen = false;
+        private bool _tCPListen = false;
         public bool TCPListen
         {
-            get { return _TCPListen; }
+            get { return _tCPListen; }
             set
             {
-                _TCPListen = value;
+                _tCPListen = value;
                 if (value)
+                {
                     ListenTCP();
+                }
             }
         }
 
-        private bool _UDPListen = false;
+        private bool _uDPListen = false;
         public bool UDPListen
         {
-            get { return _UDPListen; }
+            get { return _uDPListen; }
             set
             {
-                _UDPListen = value;
+                _uDPListen = value;
                 if (value)
+                {
                     ListenUDP();
+                }
             }
         }
         public IPEndPoint ServerEndpoint;
         public RhuClient(string ip,int port ,string UUID)
         {
             ServerEndpoint = new IPEndPoint(IPAddress.Parse(ip), port);
-            if(Environment.OSVersion.Platform == PlatformID.Win32NT)
-            {
-                UDPClient.AllowNatTraversal(true);
-                UDPClient.Client.SetIPProtectionLevel(IPProtectionLevel.Unrestricted);
-            }
 
-            UDPClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            _uDPClient.AllowNatTraversal(true);
+            _uDPClient.Client.SetIPProtectionLevel(IPProtectionLevel.Unrestricted);
+
+            _uDPClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
             LocalClientInfo.Name = UUID + "_"+ Guid.NewGuid().ToString();
             LocalClientInfo.ConnectionType = ConnectionTypes.Unknown;
@@ -76,69 +84,67 @@ namespace RhuNet
             var IPs = Dns.GetHostEntry(Dns.GetHostName()).AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork);
 
             foreach (var IP in IPs)
+            {
                 LocalClientInfo.InternalAddresses.Add(IP);
-
+            }
         }
 
         public void ConnectOrDisconnect()
         {
-            if (TCPClient.Connected)
+            if (_tCPClient.Connected)
             {
-                TCPClient.Client.Disconnect(true);
+                _tCPClient.Client.Disconnect(true);
             }
             else
             {
                 try
                 {
-                    InternetAccessAdapter = GetAdapterWithInternetAccess();
+                    _internetAccessAdapter = GetAdapterWithInternetAccess();
 
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Adapter with Internet Access: " + InternetAccessAdapter);
+                    OnResultsUpdate?.Invoke(this, "Adapter with Internet Access: " + _internetAccessAdapter);
 
-                    TCPClient = new TcpClient();
-                    TCPClient.Client.Connect(ServerEndpoint);
+                    _tCPClient = new TcpClient();
+                    _tCPClient.Client.Connect(ServerEndpoint);
 
                     UDPListen = true;
                     TCPListen = true;
 
                     SendMessageUDP(LocalClientInfo.Simplified(), ServerEndpoint);
-                    LocalClientInfo.InternalEndpoint = (IPEndPoint)UDPClient.Client.LocalEndPoint;
+                    LocalClientInfo.InternalEndpoint = (IPEndPoint)_uDPClient.Client.LocalEndPoint;
 
                     Thread.Sleep(500);
                     SendMessageTCP(LocalClientInfo);
 
-                    Thread KeepAlive = new Thread(new ThreadStart(delegate
+                    var KeepAlive = new Thread(new ThreadStart(delegate
                     {
-                        while (TCPClient.Connected)
+                        while (_tCPClient.Connected)
                         {
                             Thread.Sleep(5000);
                             SendMessageTCP(new KeepAlive());
                         }
-                    }));
-
-                    KeepAlive.IsBackground = true;
+                    }))
+                    {
+                        IsBackground = true
+                    };
                     KeepAlive.Start();
 
-                    if (OnServerConnect != null)
-                        OnServerConnect.Invoke(this, new EventArgs());
-
+                        OnServerConnect?.Invoke(this, new EventArgs());
                 }
                 catch (Exception ex)
                 {
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Error when connecting " + ex.Message);
+                    OnResultsUpdate?.Invoke(this, "Error when connecting " + ex.Message);
                 }
             }
         }
 
         private IPAddress GetAdapterWithInternetAccess()
         {
-            foreach (NetworkInterface netInterface in NetworkInterface.GetAllNetworkInterfaces())
+            foreach (var netInterface in NetworkInterface.GetAllNetworkInterfaces())
             {
                 if(netInterface.OperationalStatus != OperationalStatus.Up)
                 {
-                    IPInterfaceProperties ipProps = netInterface.GetIPProperties();
-                    foreach (UnicastIPAddressInformation addr in ipProps.UnicastAddresses)
+                    var ipProps = netInterface.GetIPProperties();
+                    foreach (var addr in ipProps.UnicastAddresses)
                     {
                         return addr.Address;
                     }
@@ -150,19 +156,18 @@ namespace RhuNet
 
         public void SendMessageTCP(IP2PBase Item)
         {
-            if (TCPClient.Connected)
+            if (_tCPClient.Connected)
             {
-                byte[] Data = Item.ToByteArray();
+                var Data = Item.ToByteArray();
 
                 try
                 {
-                    NetworkStream NetStream = TCPClient.GetStream();
+                    var NetStream = _tCPClient.GetStream();
                     NetStream.Write(Data, 0, Data.Length);
                 }
                 catch (Exception e)
                 {
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Error on TCP Send: " + e.Message);
+                    OnResultsUpdate?.Invoke(this, "Error on TCP Send: " + e.Message);
                 }
             }
         }
@@ -171,184 +176,196 @@ namespace RhuNet
         {
             Item.ID = LocalClientInfo.ID;
 
-            byte[] data = Item.ToByteArray();
+            var data = Item.ToByteArray();
 
             try
             {
                 if (data != null)
-                    UDPClient.Send(data, data.Length, EP);
+                {
+                    _uDPClient.Send(data, data.Length, EP);
+                }
             }
             catch (Exception e)
             {
-                if (OnResultsUpdate != null)
-                    OnResultsUpdate.Invoke(this, "Error on UDP Send: " + e.Message);
+                    OnResultsUpdate?.Invoke(this, "Error on UDP Send: " + e.Message);
             }
         }
 
         private void ListenUDP()
         {
-            ThreadUDPListen = new Thread(new ThreadStart(delegate
+            _threadUDPListen = new Thread(new ThreadStart(delegate
             {
                 while (UDPListen)
                 {
                     try
                     {
-                        IPEndPoint EP = LocalClientInfo.InternalEndpoint;
+                        var EP = LocalClientInfo.InternalEndpoint;
 
                         if (EP != null)
                         {
-                            byte[] ReceivedBytes = UDPClient.Receive(ref EP);
-                            IP2PBase Item = ReceivedBytes.ToP2PBase();
+                            var ReceivedBytes = _uDPClient.Receive(ref EP);
+                            var Item = ReceivedBytes.ToP2PBase();
                             ProcessItem(Item, EP);
                         }
                     }
                     catch (Exception e)
                     {
-                        if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Error the UDP Receive: " + e.Message);
+                        OnResultsUpdate?.Invoke(this, "Error the UDP Receive: " + e.Message);
                     }
                 }
-            }));
-
-            ThreadUDPListen.IsBackground = true;
+            }))
+            {
+                IsBackground = true
+            };
 
             if (UDPListen)
-                ThreadUDPListen.Start();
+            {
+                _threadUDPListen.Start();
+            }
         }
 
         private void ListenTCP()
         {
-            ThreadTCPListen = new Thread(new ThreadStart(delegate
+            _threadTCPListen = new Thread(new ThreadStart(delegate
             {
-                byte[] ReceivedBytes = new byte[4096];
-                int BytesRead = 0;
+                var ReceivedBytes = new byte[4096];
+                var BytesRead = 0;
 
                 while (TCPListen)
                 {
                     try
                     {
-                        if (!TCPClient.Connected) break;
-                        BytesRead = TCPClient.GetStream().Read(ReceivedBytes, 0, ReceivedBytes.Length);
+                        if (!_tCPClient.Connected)
+                        {
+                            break;
+                        }
+
+                        BytesRead = _tCPClient.GetStream().Read(ReceivedBytes, 0, ReceivedBytes.Length);
 
                         if (BytesRead == 0)
+                        {
                             break;
+                        }
                         else
                         {
-                            IP2PBase Item = ReceivedBytes.ToP2PBase();
+                            var Item = ReceivedBytes.ToP2PBase();
                             ProcessItem(Item);
                         }
                     }
                     catch (Exception e)
                     {
-                        if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Error on TCP Receive: " + e.Message);
+                        OnResultsUpdate?.Invoke(this, "Error on TCP Receive: " + e.Message);
                     }
                 }
-            }));
-
-            ThreadTCPListen.IsBackground = true;
+            }))
+            {
+                IsBackground = true
+            };
 
             if (TCPListen)
-                ThreadTCPListen.Start();
+            {
+                _threadTCPListen.Start();
+            }
         }
 
         private void ProcessItem(IP2PBase Item, IPEndPoint EP = null)
         {
             if(Item.GetType() == typeof(Data))
             {
-                dataRecived?.Invoke((Data)Item,EP);
+                DataRecived?.Invoke((Data)Item,EP);
             }
             else if (Item.GetType() == typeof(Message))
             {
-                Message m = (Message)Item;
-                ClientInfo CI = Clients.FirstOrDefault(x => x.ID == Item.ID);
+                var m = (Message)Item;
+                var CI = _clients.FirstOrDefault(x => x.ID == Item.ID);
 
                 if (m.ID == 0)
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, m.From + ": " + m.Content);
+                {
+                    OnResultsUpdate?.Invoke(this, m.From + ": " + m.Content);
+                }
 
                 if (m.ID != 0 & EP != null & CI != null)
+                {
                     if (OnMessageReceived != null)
+                    {
                         OnMessageReceived.Invoke(EP, new MessageReceivedEventArgs(CI, m, EP));
+                    }
+                }
             }
             else if (Item.GetType() == typeof(Notification))
             {
-                Notification N = (Notification)Item;
+                var N = (Notification)Item;
 
                 if (N.Type == NotificationsTypes.Disconnected)
                 {
-                    ClientInfo CI = Clients.FirstOrDefault(x => x.ID == long.Parse(N.Tag.ToString()));
+                    var CI = _clients.FirstOrDefault(x => x.ID == long.Parse(N.Tag.ToString()));
 
                     if (CI != null)
                     {
-                        if (OnClientRemoved != null)
-                            OnClientRemoved.Invoke(this, CI);
+                        OnClientRemoved?.Invoke(this, CI);
 
-                        Clients.Remove(CI);
+                        _clients.Remove(CI);
                     }
                 }
                 else if (N.Type == NotificationsTypes.ServerShutdown)
                 {
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Server shutting down.");
+                    OnResultsUpdate?.Invoke(this, "Server shutting down.");
 
                     ConnectOrDisconnect();
                 }
             }
             else if (Item.GetType() == typeof(Req))
             {
-                Req R = (Req)Item;
+                var R = (Req)Item;
 
-                ClientInfo CI = Clients.FirstOrDefault(x => x.ID == R.ID);
+                var CI = _clients.FirstOrDefault(x => x.ID == R.ID);
 
                 if (CI != null)
                 {
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Received Connection Request from: " + CI.ToString());
+                    OnResultsUpdate?.Invoke(this, "Received Connection Request from: " + CI.ToString());
 
-                    IPEndPoint ResponsiveEP = FindReachableEndpoint(CI);
+                    var ResponsiveEP = FindReachableEndpoint(CI);
 
                     if (ResponsiveEP != null)
                     {
-                        if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Connection Successfull to: " + ResponsiveEP.ToString());
 
-                        if (OnClientConnection != null)
-                            OnClientConnection.Invoke(CI, ResponsiveEP);
+                            OnResultsUpdate?.Invoke(this, "Connection Successfull to: " + ResponsiveEP.ToString());
+                        
+                            OnClientConnection?.Invoke(CI, ResponsiveEP);
+                        
 
-                        if (OnClientUpdated != null)
-                            OnClientUpdated.Invoke(this, CI);
+                            OnClientUpdated?.Invoke(this, CI);
+                        
                     }
                 }
             }
             else if (Item.GetType() == typeof(Ack))
             {
-                Ack A = (Ack)Item;
+                var A = (Ack)Item;
 
                 if (A.Responce)
-                    AckResponces.Add(A);
+                {
+                    _ackResponces.Add(A);
+                }
                 else
                 {
-                    ClientInfo CI = Clients.FirstOrDefault(x => x.ID == A.ID);
+                    var CI = _clients.FirstOrDefault(x => x.ID == A.ID);
 
                     if (CI.ExternalEndpoint.Address.Equals(EP.Address) & CI.ExternalEndpoint.Port != EP.Port)
                     {
-                        if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Received Ack on Different Port (" + EP.Port + "). Updating ...");
+                        OnResultsUpdate?.Invoke(this, "Received Ack on Different Port (" + EP.Port + "). Updating ...");
 
                         CI.ExternalEndpoint.Port = EP.Port;
 
-                        if (OnClientUpdated != null)
-                            OnClientUpdated.Invoke(this, CI);
+                        OnClientUpdated?.Invoke(this, CI);
                     }
 
-                    List<string> IPs = new List<string>();
+                    var IPs = new List<string>();
                     CI.InternalAddresses.ForEach(new Action<IPAddress>(delegate (IPAddress IP) { IPs.Add(IP.ToString()); }));
 
                     if (!CI.ExternalEndpoint.Address.Equals(EP.Address) & !IPs.Contains(EP.Address.ToString()))
                     {
-                        if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Received Ack on New Address (" + EP.Address + "). Updating ...");
+                        OnResultsUpdate?.Invoke(this, "Received Ack on New Address (" + EP.Address + "). Updating ...");
 
                         CI.InternalAddresses.Add(EP.Address);
                     }
@@ -360,7 +377,7 @@ namespace RhuNet
             }else if(Item.GetType() == typeof(ClientInfo))
             {
                 Console.WriteLine("resived Client");
-                Clients.Add((ClientInfo)Item);
+                _clients.Add((ClientInfo)Item);
                 OnClientAdded?.Invoke(EP, (ClientInfo)Item);
                 if (tokens.Contains(((ClientInfo)Item).ID))
                 {
@@ -376,72 +393,75 @@ namespace RhuNet
         public void ConnectToToken(string token)
         {
             tokens.Add(long.Parse(token));
-            SendMessageTCP(new getClient(long.Parse(token)));
+            SendMessageTCP(new GetClient(long.Parse(token)));
         }
 
         public void ConnectToClient(ClientInfo CI)
         {
-            Req R = new Req(LocalClientInfo.ID, CI.ID);
+            var R = new Req(LocalClientInfo.ID, CI.ID);
 
             SendMessageTCP(R);
 
-            if (OnResultsUpdate != null)
-                OnResultsUpdate.Invoke(this, "Sent Connection Request To: " + CI.ToString());
+                OnResultsUpdate?.Invoke(this, "Sent Connection Request To: " + CI.ToString());
 
-            Thread Connect = new Thread(new ThreadStart(delegate
+
+            var Connect = new Thread(new ThreadStart(delegate
             {
-                IPEndPoint ResponsiveEP = FindReachableEndpoint(CI);
+                var ResponsiveEP = FindReachableEndpoint(CI);
 
                 if (ResponsiveEP != null)
                 {
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Connection Successfull to: " + ResponsiveEP.ToString());
+                    OnResultsUpdate?.Invoke(this, "Connection Successfull to: " + ResponsiveEP.ToString());
 
-                    if (OnClientConnection != null)
-                        OnClientConnection.Invoke(CI, ResponsiveEP);
+                    
+                        OnClientConnection?.Invoke(CI, ResponsiveEP);
+                    
                 }
-            }));
-
-            Connect.IsBackground = true;
+            }))
+            {
+                IsBackground = true
+            };
 
             Connect.Start();
         }
 
         private IPEndPoint FindReachableEndpoint(ClientInfo CI)
         {
-            if (OnResultsUpdate != null)
-                OnResultsUpdate.Invoke(this, "Attempting to Connect via LAN");
+            OnResultsUpdate?.Invoke(this, "Attempting to Connect via LAN");
 
-            for (int ip = 0; ip < CI.InternalAddresses.Count; ip++)
+            for (var ip = 0; ip < CI.InternalAddresses.Count; ip++)
             {
-                if (!TCPClient.Connected)
-                    break;
-
-                IPAddress IP = CI.InternalAddresses[ip];
-
-                IPEndPoint EP = new IPEndPoint(IP, CI.InternalEndpoint.Port);
-
-                for (int i = 1; i < 4; i++)
+                if (!_tCPClient.Connected)
                 {
-                    if (!TCPClient.Connected)
-                        break;
+                    break;
+                }
 
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Sending Ack to " + EP.ToString() + ". Attempt " + i + " of 3");
+                var IP = CI.InternalAddresses[ip];
+
+                var EP = new IPEndPoint(IP, CI.InternalEndpoint.Port);
+
+                for (var i = 1; i < 4; i++)
+                {
+                    if (!_tCPClient.Connected)
+                    {
+                        break;
+                    }
+
+                    OnResultsUpdate?.Invoke(this, "Sending Ack to " + EP.ToString() + ". Attempt " + i + " of 3");
 
                     SendMessageUDP(new Ack(LocalClientInfo.ID), EP);
                     Thread.Sleep(200);
 
-                    Ack Responce = AckResponces.FirstOrDefault(a => a.RecipientID == CI.ID);
+                    var Responce = _ackResponces.FirstOrDefault(a => a.RecipientID == CI.ID);
 
                     if (Responce != null)
                     {
-                        if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Received Ack Responce from " + EP.ToString());
+                            OnResultsUpdate?.Invoke(this, "Received Ack Responce from " + EP.ToString());
+                     
 
                         CI.ConnectionType = ConnectionTypes.LAN;
 
-                        AckResponces.Remove(Responce);
+                        _ackResponces.Remove(Responce);
 
                         return EP;
                     }
@@ -450,42 +470,39 @@ namespace RhuNet
 
             if (CI.ExternalEndpoint != null)
             {
-                if (OnResultsUpdate != null)
-                    OnResultsUpdate.Invoke(this, "Attempting to Connect via Internet");
+                OnResultsUpdate?.Invoke(this, "Attempting to Connect via Internet");
 
-                for (int i = 1; i < 100; i++)
+                for (var i = 1; i < 100; i++)
                 {
-                    if (!TCPClient.Connected)
+                    if (!_tCPClient.Connected)
+                    {
                         break;
+                    }
 
-                    if (OnResultsUpdate != null)
-                        OnResultsUpdate.Invoke(this, "Sending Ack to " + CI.ExternalEndpoint + ". Attempt " + i + " of 99");
+                        OnResultsUpdate?.Invoke(this, "Sending Ack to " + CI.ExternalEndpoint + ". Attempt " + i + " of 99");
 
                     SendMessageUDP(new Ack(LocalClientInfo.ID), CI.ExternalEndpoint);
                     Thread.Sleep(300);
 
-                    Ack Responce = AckResponces.FirstOrDefault(a => a.RecipientID == CI.ID);
+                    var Responce = _ackResponces.FirstOrDefault(a => a.RecipientID == CI.ID);
 
                     if (Responce != null)
                     {
-                        if (OnResultsUpdate != null)
-                            OnResultsUpdate.Invoke(this, "Received Ack New from " + CI.ExternalEndpoint.ToString());
-
+                            OnResultsUpdate?.Invoke(this, "Received Ack New from " + CI.ExternalEndpoint.ToString());
+                    
                         CI.ConnectionType = ConnectionTypes.WAN;
 
-                        AckResponces.Remove(Responce);
+                        _ackResponces.Remove(Responce);
 
                         return CI.ExternalEndpoint;
                     }
                 }
 
-                if (OnResultsUpdate != null)
-                    OnResultsUpdate.Invoke(this, "Connection to " + CI.Name + " failed");
+                OnResultsUpdate?.Invoke(this, "Connection to " + CI.Name + " failed");
             }
             else
             {
-                if (OnResultsUpdate != null)
-                    OnResultsUpdate.Invoke(this, "Client's External EndPoint is Unknown");
+                OnResultsUpdate?.Invoke(this, "Client's External EndPoint is Unknown");
             }
 
             return null;
@@ -494,14 +511,14 @@ namespace RhuNet
 
     public class MessageReceivedEventArgs : EventArgs
     {
-        public Message message { get; set; }
-        public ClientInfo clientInfo { get; set; }
+        public Message Message { get; set; }
+        public ClientInfo ClientInfo { get; set; }
         public IPEndPoint EstablishedEP { get; set; }
 
         public MessageReceivedEventArgs(ClientInfo _clientInfo, Message _message, IPEndPoint _establishedEP)
         {
-            clientInfo = _clientInfo;
-            message = _message;
+            ClientInfo = _clientInfo;
+            Message = _message;
             EstablishedEP = _establishedEP;
         }
     }

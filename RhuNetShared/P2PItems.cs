@@ -5,7 +5,7 @@ namespace RhuNetShared
     public enum NotificationsTypes { ServerShutdown, Disconnected }
 
     [MessagePackObject]
-    public class getClient : IP2PBase
+    public class GetClient : IP2PBase
     {
         [Key(0)]
         public long ID { get; set; }
@@ -13,11 +13,11 @@ namespace RhuNetShared
         [Key(1)]
         public long ClientID { get; set; }
 
-        public getClient(long _Tag)
+        public GetClient(long _Tag)
         {
             ClientID = _Tag;
         }
-        public getClient()
+        public GetClient()
         {
 
         }
@@ -132,7 +132,9 @@ namespace RhuNetShared
         public long ID { get; set; }
 
         [Key(1)]
+#pragma warning disable IDE1006 // Naming Styles
         public byte[] data{ get; set; }
+#pragma warning restore IDE1006 // Naming Styles
 
         public Data(byte[] _data)
         {

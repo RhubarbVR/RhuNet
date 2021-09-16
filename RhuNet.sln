@@ -9,6 +9,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RhuNetShared", "RhuNetShare
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HandShakeServer", "HandShakeServer\HandShakeServer.csproj", "{BA7AD4E4-92FE-4088-AE8B-6EA5FBEC27DF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D4EFC5D5-506C-4C81-A2FB-56267F29314C}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		..\RhubarbVR\.gitignore = ..\RhubarbVR\.gitignore
+		..\RhubarbVR\LICENSE = ..\RhubarbVR\LICENSE
+		..\RhubarbVR\README.md = ..\RhubarbVR\README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

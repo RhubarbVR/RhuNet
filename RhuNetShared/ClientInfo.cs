@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using MessagePack;
+#pragma warning disable IDE1006 // Naming Styles
+
 namespace RhuNetShared
 {
     public enum ConnectionTypes:byte { Unknown, LAN, WAN }
@@ -23,9 +25,9 @@ namespace RhuNetShared
 
 
         [IgnoreMember]
-        public IPEndPoint ExternalEndpoint { get { try { return IPEndPoint.Parse(_ExternalEndpoint); } catch { return default(IPEndPoint); } } set { _ExternalEndpoint = value?.ToString(); } }
+        public IPEndPoint ExternalEndpoint { get { try { return IPEndPoint.Parse(_ExternalEndpoint); } catch { return default; } } set { _ExternalEndpoint = value?.ToString(); } }
         [IgnoreMember]
-        public IPEndPoint InternalEndpoint { get { try { return IPEndPoint.Parse(_InternalEndpoint); } catch { return default(IPEndPoint); } } set { _InternalEndpoint = value?.ToString(); } }
+        public IPEndPoint InternalEndpoint { get { try { return IPEndPoint.Parse(_InternalEndpoint); } catch { return default; } } set { _InternalEndpoint = value?.ToString(); } }
    
         [Key(4)]
         public int _ConnectionType { get; set; }
@@ -38,7 +40,7 @@ namespace RhuNetShared
         {
             get
             {
-                List<string> strings = new List<string>();
+                var strings = new List<string>();
                 foreach (var item in InternalAddresses)
                 {
                     strings.Add(item.ToString());
@@ -66,9 +68,13 @@ namespace RhuNetShared
         {
             if (ID == CI.ID)
             {
-                foreach (PropertyInfo P in CI.GetType().GetProperties())
+                foreach (var P in CI.GetType().GetProperties())
+                {
                     if (P.GetValue(CI) != null)
+                    {
                         P.SetValue(this, P.GetValue(CI));
+                    }
+                }
 
                 if (CI.InternalAddresses.Count > 0)
                 {
@@ -77,21 +83,19 @@ namespace RhuNetShared
                 }
             }
 
-            return (ID == CI.ID);
+            return ID == CI.ID;
         }
         public override string ToString()
         {
-            if (ExternalEndpoint != null)
-                return Name + " (" + ExternalEndpoint.Address + ")";
-            else
-                return Name + " (UDP Endpoint Unknown)";
+            return ExternalEndpoint != null ? Name + " (" + ExternalEndpoint.Address + ")" : Name + " (UDP Endpoint Unknown)";
         }
         public ClientInfo Simplified() => new ClientInfo()
         {
-            Name = this.Name,
-            ID = this.ID,
-            InternalEndpoint = this.InternalEndpoint,
-            ExternalEndpoint = this.ExternalEndpoint
+            Name = Name,
+            ID = ID,
+            InternalEndpoint = InternalEndpoint,
+            ExternalEndpoint = ExternalEndpoint
         };
     }    
 }
+#pragma warning restore IDE1006 // Naming Styles
