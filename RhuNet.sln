@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\RhubarbVR\README.md = ..\RhubarbVR\README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RhuNetTests", "RhuNetTests\RhuNetTests.csproj", "{B324C2E6-6D5C-48A9-BD23-486FB8F1AADB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +37,10 @@ Global
 		{BA7AD4E4-92FE-4088-AE8B-6EA5FBEC27DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BA7AD4E4-92FE-4088-AE8B-6EA5FBEC27DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BA7AD4E4-92FE-4088-AE8B-6EA5FBEC27DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B324C2E6-6D5C-48A9-BD23-486FB8F1AADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B324C2E6-6D5C-48A9-BD23-486FB8F1AADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B324C2E6-6D5C-48A9-BD23-486FB8F1AADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B324C2E6-6D5C-48A9-BD23-486FB8F1AADB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

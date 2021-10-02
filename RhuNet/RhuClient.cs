@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using RhuNetShared;
 using System.Threading;
 using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 
 namespace RhuNet
 {
@@ -71,10 +72,11 @@ namespace RhuNet
         public RhuClient(string ip,int port ,string UUID)
         {
             ServerEndpoint = new IPEndPoint(IPAddress.Parse(ip), port);
-
-            _uDPClient.AllowNatTraversal(true);
-            _uDPClient.Client.SetIPProtectionLevel(IPProtectionLevel.Unrestricted);
-
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _uDPClient.AllowNatTraversal(true);
+                _uDPClient.Client.SetIPProtectionLevel(IPProtectionLevel.Unrestricted);
+            }
             _uDPClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
             LocalClientInfo.Name = UUID + "_"+ Guid.NewGuid().ToString();
